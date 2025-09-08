@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - release
+
+jobs:
+
+  ci:
+    name: CI
+    uses: ponlawat-w/moodle-local_accessibility/.github/workflows/ci.yml@master
+    with:
+      widget-additional: ponlawat-w/moodle-accessibility_textalignment
+      widget-additional-name: textalignment
+      widget-additional-ref: ${{ github.ref }}
+
+  get-version:
+    name: Get version info
+    uses: ponlawat-w/moodle-local_accessibility/.github/workflows/get-version.yml@master
+    with:
+      ref: ${{ github.ref }}
+
+  release:
+    name: Release
+    needs: [ci, get-version]
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Push to Branch
+        run: |
+          git checkout -b ${{ needs.get-version.outputs.branch-name }}
+          git push -f -u origin ${{ needs.get-version.outputs.branch-name }}
+
+      - name: Publish Tag
+        run: |
+          git config --global user.name "ponlawat-w"
+          git config --global user.email "ponlawat_w@outlook.co.th"
+          git tag -fa v${{ needs.get-version.outputs.plugin-release }} -m "${{ needs.get-version.outputs.plugin-release }} - ${{ needs.get-version.outputs.plugin-version }}"
+          git push --force origin v${{ needs.get-version.outputs.plugin-release }}
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.get-version.outputs.plugin-release }}
+          name: v${{ needs.get-version.outputs.plugin-release }}
+          body: ${{ needs.get-version.outputs.plugin-release }} - ${{ needs.get-version.outputs.plugin-version }}
